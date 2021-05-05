@@ -28,20 +28,23 @@ int main(int argc, const char * argv[]) {
     returnCode = pthread_create(&threads[0], NULL, (void*)&getSum, (void*)&num);
     returnCode2 = pthread_create(&threads[1], NULL, (void*)&getFactorial, (void*)&num);
     
-//    error 출력
+//    error 발생시 출력
     if(returnCode != 0 || returnCode2 != 0){
         fprintf(stderr, "error : returnCode = %d\n", returnCode);
         fprintf(stderr, "error : returnCode2 = %d\n", returnCode2);
         exit(1);
     }
     
+//    main thread sleep
     
     for(i = 0; i < 2; i++)
     {
+        
 //         https://man7.org/linux/man-pages/man3/pthread_join.3.html
-//        thread 가 terminate 될때까지 기다린다.
+//        thread 가 terminate 될때까지 기다린후 Join, 자원 반환
         returnCode = pthread_join(threads[i], (void*)&result[i]);
         
+//        error 발생시 출력
         if(returnCode != 0)
         {
             fprintf(stderr,"Error thread %d | error code : %d\n", i, returnCode);
@@ -49,10 +52,12 @@ int main(int argc, const char * argv[]) {
         }
     }
     
+    //결과 출력
+    
     printf("sum = %d\n", result[0]);
     printf("factorial = %d\n", result[1]);
     
-    printf("hi");
+
     
     return 0;
 }
@@ -68,7 +73,7 @@ void* getSum(int *arg)
     long result = 0;
     int num = *arg;
     
-    for(int i = 0; i <= num; i++){
+    for(int i = 1; i <= num; i++){
         result += i;
     }
 
