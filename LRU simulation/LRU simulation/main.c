@@ -9,71 +9,150 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
-#include "stack.h"
+
+typedef int element;
+
+typedef struct stackNode{
+    
+    element data;
+    struct stackNode* rLink;
+    struct stackNode* lLink;
+    
+}stackNode;
+
+stackNode** createStack(){
+    return NULL;
+}
+
+int stackEmptycheck(stackNode* top){
+    if(top == NULL) return 1;
+    else return 0;
+}
 
 
-typedef struct pageTable{
+element stackPop(stackNode** top){
     
-    int count;
-    int validBit;
-    long address;
-    int referenceBit;
+    element data;
+    stackNode** temp;
     
-}pageTable;
+    if(stackEmptycheck(*top))
+    {
+        fprintf(stderr, "stack empty error!\n");
+    }
+    
+    temp = *top;
+    data = (*top) -> data;
+    *top = (*top) -> rLink;
+    
+    free(temp);
+    
+    return data;
+}
 
-typedef struct tableSruct{
+void stackPush(stackNode** top, element data){
     
-    struct pageTable* pageTable;
+    stackNode* newNode = (stackNode*)malloc(sizeof(stackNode));
     
-}tableStruct;
+    newNode -> data = data;
+    newNode -> rLink = *top;
+    if(*top != NULL)
+    (*top)->lLink = newNode;
+    *top = newNode;
+    newNode -> lLink = NULL;
+    
+}
+
+void printStack(stackNode** top){
+    
+    stackNode* stack = *top;
+    
+    printf("\n stack [top- ");
+    while(stack){
+        printf("%d ", stack->data);
+        stack = stack -> rLink;
+    }
+    printf("]\n");
+}
+
+stackNode* stackSearch(stackNode** top, int data){
+    
+    stackNode* stack = *top;
+    while(stack){
+        if(stack->data == data) return stack;
+        else{stack = stack -> rLink;}
+    }
+    
+    return NULL;
+}
+
+void deleteNode(stackNode** top, stackNode* deleteNode)
+{
+    
+    if (*top == NULL || deleteNode == NULL)
+        return;
+ 
+    
+    if (*top == deleteNode)
+        *top = deleteNode->rLink;
+ 
+    
+    if (deleteNode->rLink != NULL)
+        deleteNode->rLink->lLink = deleteNode->lLink;
+    else
+        if(deleteNode -> lLink != NULL) deleteNode ->lLink->rLink = NULL;
+ 
+    
+    if (deleteNode->lLink != NULL)
+        deleteNode->lLink->rLink = deleteNode->rLink;
+    else
+        if(deleteNode -> rLink != NULL) deleteNode->rLink->lLink = NULL;
+ 
+
+    free(deleteNode);
+    
+    return;
+}
+
+
+stackNode* buttomSearch(stackNode** top){
+    
+    stackNode* stack = *top;
+    while(stack){
+        if(stack->rLink == NULL) return stack;
+        else{stack = stack -> rLink;}
+    }
+    
+    return NULL;
+}
+
+
 
 int main(int argc, const char * argv[]) {
     
-    int diskStorage[60000];
-    int inputSize = 0;
-    int* physicalMemory = 0;
+    
+    long inputSize = 0;
     int virtualPageNumber = -1;
-    int tableSize = 1001;
     char operation[6];
     int operationCount = 0;
-    long maxCount = 0;
-    int maxCountAddress = -1;
     long validBitCount = 0;
-    
-    long checkcheck =0;
     
     long totalAccess = 0;
     long totalRead = 0;
     long totalWrite = 0;
     long totalHit = 0;
     long totalFaults = 0;
-    float rate = 0;
+    double rate = 0;
 
     
     srand(time(NULL));
     
-  
     
-    
-    scanf("%d", &inputSize);
-    
-    physicalMemory = (int*)malloc(sizeof(int)*inputSize);
-    
+    stackNode* top = createStack();
 
-    tableStruct* table = (tableStruct*)malloc(sizeof(table));
-    table -> pageTable = (pageTable*)malloc(sizeof(pageTable)*tableSize);
+    scanf("%ld", &inputSize);
     
-    
-    //table 초기화
-    for(int i =0; i < tableSize; i++){
-        table->pageTable[i].address = -1;
-        table->pageTable[i].validBit = 0;
-    }
-    
-    
-    
-    
-    FILE* fp = fopen("/Users/s85737/Downloads/access.list", "r");
+        
+    FILE* fp = fopen("access.list", "r");
     
     if(fp == NULL){
         fprintf(stderr, "unknown Error!");
@@ -83,12 +162,7 @@ int main(int argc, const char * argv[]) {
     
 
     while (!feof(fp)) {
-        if((operationCount % 500) == 0){
-            operationCount = 0;
-            for (int i = 0; i < tableSize; i++) {
-                table->pageTable[i].referenceBit = 0;
-            }
-        }
+        
         
         fscanf(fp, "%d ", &virtualPageNumber);
         fscanf(fp, "%s ", operation);
@@ -103,69 +177,27 @@ int main(int argc, const char * argv[]) {
         }
         
         
-        if(table->pageTable[virtualPageNumber].address == -1 &&
-           validBitCount < inputSize){
+        if(stackSearch(&top, virtualPageNumber) == NULL){
             
-            //아직 physical memory에 할당 안되었을때.
-            
-            int randAddress = rand() % inputSize;
-            table->pageTable[virtualPageNumber].address = randAddress;
-            table->pageTable[virtualPageNumber].validBit = 1;
-            physicalMemory[randAddress] = 1;
-            
+            stackPush(&top, virtualPageNumber);
             totalFaults++;
             validBitCount++;
+
+        }else if(stackSearch(&top, virtualPageNumber) != NULL){
             
-        }else{
+            deleteNode(&top, stackSearch(&top, virtualPageNumber));
+            stackPush(&top, virtualPageNumber);
+            totalHit++;
             
-            //다 할당된후, 평소 동작
+        }else if(stackSearch(&top, virtualPageNumber) == NULL
+        &&validBitCount == inputSize){
             
-            if(table->pageTable[virtualPageNumber].validBit == 1){
-                totalHit++;
-                //R = 1 이므로, count 0으로
-                table->pageTable[virtualPageNumber].referenceBit = 1;
-                table->pageTable[virtualPageNumber].count = 0;
-                
-                for(int searchIndex = 0; searchIndex < tableSize; searchIndex++){
-                    // counter
-                    if(table->pageTable[searchIndex].referenceBit == 0
-                       && table->pageTable[searchIndex].validBit == 1)
-                        table->pageTable[searchIndex].count++;
-                    
-                    if(table->pageTable[searchIndex].count >= maxCount){
-                        maxCount = table->pageTable[searchIndex].count;
-                        maxCountAddress = searchIndex;
-                    }
-                }
-                
-            }else{
-                totalFaults++;
-                //counter operation
-                for(int searchIndex = 0; searchIndex < tableSize; searchIndex++){
-                    
-                    if(table->pageTable[searchIndex].referenceBit == 0
-                       && table->pageTable[searchIndex].validBit == 1)
-                        table->pageTable[searchIndex].count++;
-                    
-                    if(table->pageTable[searchIndex].count >= maxCount
-                       && table->pageTable[searchIndex].validBit == 1){
-                        maxCount = table->pageTable[searchIndex].count;
-                        maxCountAddress = searchIndex;
-                    }
-                }
-                
-                if(table->pageTable[maxCountAddress].validBit == 1
-                   &&maxCountAddress != -1){
-                    
-                    table->pageTable[maxCountAddress].validBit = 0;
-                    table->pageTable[maxCountAddress].address = rand() % 60000;
-                    table->pageTable[maxCountAddress].referenceBit = 0;
-                    maxCountAddress = -1;
-                    
-                }
-                
-                
-            }
+            totalFaults++;
+            deleteNode(&top, buttomSearch(&top));
+            stackPush(&top, virtualPageNumber);
+            
+        }
+        
             
         }
         
@@ -173,18 +205,10 @@ int main(int argc, const char * argv[]) {
         operationCount++;
         
         
-        for(int i=0; i<tableSize; i++){
-            if(table->pageTable[i].validBit == 1) checkcheck++;
-        }
-        
-        checkcheck = 0;
-        
-    }
-        
     
     totalAccess = totalRead + totalWrite;
     
-    rate = totalFaults / totalAccess;
+    rate = (double)totalFaults / (double)totalAccess * 100;
     
     
     printf("Total number of access: %ld\n", totalAccess);
@@ -192,7 +216,7 @@ int main(int argc, const char * argv[]) {
     printf("Total number of write: %ld\n", totalWrite);
     printf("Number of page hits: %ld\n", totalHit);
     printf("Number of page faults: %ld\n", totalFaults);
-    printf("Page fault rate: %lf", rate);
+    printf("Page fault rate: %ld/%ld = %0.3f %%\n",totalFaults,totalAccess, rate);
     
     
     fclose(fp);
