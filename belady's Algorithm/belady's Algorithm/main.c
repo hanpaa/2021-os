@@ -125,7 +125,11 @@ stackNode* findLatestNode(stackNode** top, int operationCount, predictTable* tab
             
             
             //만약 다음 순서가 operation num보다 높으면 stop
+            int lastIndex = table->predictTable[stack->data].lastIndex -1;
             
+            if(largestNode == NULL || table->predictTable[stack->data].table[lastIndex] < operationCount){
+                largestNode = stack;
+            }
             //더 없으면 그냥 그것들 Pop해버리면 되는거 아닌가?
             if(table->predictTable[stack->data].table[i] >= operationCount){
                 int nextAccessDist = table->predictTable[stack->data].table[i] - operationCount;
@@ -204,6 +208,7 @@ stackNode* findNeverUsed(stackNode** top, int operationCount, predictTable* tabl
         largestNum = table->predictTable[stack->data].lastIndex;
         if(table->predictTable[stack->data].table[largestNum-1] < operationCount){
             neverUsedNode = stack;
+            break;
         }
         stack = stack -> rLink;
             }
@@ -345,10 +350,10 @@ int main(int argc, const char * argv[]) {
                 }
                 
                 fclose(fp);
+                
+                //segement fault 방지 다시 열어줌
                 fp = fopen("/Users/s85737/Downloads/newfile.list", "r");
             
-                fscanf(fp, "%d ", &virtualPageNumber);
-                fscanf(fp, "%s ", operation);
                 
                 //이전 파일포인터로이동
                 fseek(fp, getFP, SEEK_SET);
@@ -374,27 +379,45 @@ int main(int argc, const char * argv[]) {
             stackPush(&predictStack, virtualPageNumber);
             totalFaults++;
             validBitCount++;
+            
+            //이제 안쓰이는 노드 지속적으로 정리
+            
+            stackNode* neverused = findNeverUsed(&predictStack, operationCount, table);
+            if(neverused){
+                deleteNode(&predictStack,neverused);
+                validBitCount--;
+            }
 
         }else if(stackSearch(&predictStack, virtualPageNumber) != NULL){
             totalHit++;
             
-            if(targetNode == NULL){
-                deleteNode(&predictStack, findNeverUsed(&predictStack, operationCount, table));
+            
+            //이제 안쓰이는 노드 지속적으로 정리
+            stackNode* neverused = findNeverUsed(&predictStack, operationCount, table);
+            if(neverused){
+                deleteNode(&predictStack,neverused);
                 validBitCount--;
             }
             
+            
         }else if(stackSearch(&predictStack, virtualPageNumber) == NULL
+                 && validBitCount == inputSize
                  //초반에 모두 falut
                 ){
             //physical memory 다찼을경우, fault가 났을때, 가장 멀리있는거 교체
             
-            if(targetNode != NULL){
+        
             deleteNode(&predictStack, findLatestNode(&predictStack, operationCount, table));
             stackPush(&predictStack, virtualPageNumber);
-            }else{
-                deleteNode(&predictStack, findNeverUsed(&predictStack, operationCount, table));
-                stackPush(&predictStack, virtualPageNumber);
+            
+            //이제 안쓰이는 노드 지속적으로 정리
+            
+            stackNode* neverused = findNeverUsed(&predictStack, operationCount, table);
+            if(neverused){
+                deleteNode(&predictStack,neverused);
+                validBitCount--;
             }
+            
 
             totalFaults++;
             
